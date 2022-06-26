@@ -1,0 +1,82 @@
+---
+title: "bdsi_correlated_data_script"
+output: html_document
+date: '2022-06-23'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r import_data}
+leData <- read.csv("~/irena/bdsi_2022/leData.csv")
+```
+
+## Clustered Data: K-Means Clustering Example 
+
+```{r k_means_cluster_example}
+
+library(cluster)
+leData_cluster <- na.omit(leData[leData$Year==2000,c("Country","Alcohol", "GDP", "Schooling")])
+rownames(leData_cluster) <- leData_final$Country
+k_means =pam(leData_cluster[,c(2:4)], k=6)
+clusplot(k_means, labels=3)
+
+## save the estimated cluster for each country as a variable 
+leData_cluster$cluster <- k_means$clustering
+```
+## Time Series Data: AR1 Example 
+
+```{r time_series_example}
+
+
+timeData <- leData[leData$Country=="Botswana",]
+
+ggplot(data=timeData, aes(x=Year, y=Life.expectancy)) +
+  geom_point(color="#378e8e") +  
+  labs(title="Life Expectancy Over Time in Botswana") + 
+  theme(plot.title = element_text(hjust=0.5, size=20)) +
+  theme_bw()
+
+timeData <- dplyr::arrange(timeData, Year)
+
+## Linear Regression using time to predict life expectancy 
+timeData_lm <- lm(Life.expectancy ~ Year, data=timeData)
+summary(timeData_lm)
+timeData$fitted_lm <- timeData$Life.expectancy- residuals(timeData_lm)
+
+ggplot(data=timeData, aes(x=Year, y=Life.expectancy)) +
+  geom_point(color="#378e8e") +  
+  geom_line(color="#378e8e") + 
+  geom_point(aes(x=Year, y=fitted_lm), color="red") + 
+  geom_line(aes(x=Year, y=fitted_lm), color="red") + 
+  labs(title="Life Expectancy Over Time in Botswana", subtitle="plotted with predictions from Linear Regression") + 
+  theme(plot.title = element_text(hjust=0.5, size=20)) +
+  theme_bw()
+
+```
+## Longitudinal Data: Linear Mixed Model Example 
+```{r lmm_example}
+
+## linear l=mixed model 
+life_exp_lmm <-  lmer(Adult.Mortality~Alcohol+ Year + (1|Country),data=leData)
+summary(life_exp_lmm)
+confint(life_exp_lmm)
+
+
+```
+
+## Ignoring Correlation in Datasets 
+
+```{r linear_reg_example}
+life_exp_lm <- lm(Adult.Mortality~Alcohol + Year,data=leData)
+summary(life_exp_lm)
+
+
+```
